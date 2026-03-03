@@ -1,4 +1,4 @@
-import imagekit from "../configs/imagekit.js";
+import imagekit from "../configs/imageKit.js";
 import Resume from "../models/Resume.js";
 import fs from "fs";
 // controller for creating a new resume
@@ -30,7 +30,7 @@ export const createResume = async (req, res) => {
 export const deleteResume = async (req, res) => {
     try {
         const userId = req.userID;
-        const resumeId = req.params.id;
+        const resumeId = req.params.resumeId;
 
         // deleting resume
         await Resume.findOneAndDelete({ userId, _id: resumeId })
@@ -52,7 +52,7 @@ export const deleteResume = async (req, res) => {
 export const getResumeById = async (req, res) => {
     try {
         const userId = req.userID;
-        const resumeId = req.params.id;
+        const resumeId = req.params.resumeId;
 
         const resume = await Resume.findOne({ userId, _id: resumeId })
 
@@ -69,7 +69,7 @@ export const getResumeById = async (req, res) => {
 
 
     } catch (error) {
-        return res.status(400).json({ message: "error deleting resume", error: error.message })
+        return res.status(400).json({ message: "error retrieving resume", error: error.message })
 
     }
 }
@@ -79,7 +79,7 @@ export const getResumeById = async (req, res) => {
 
 export const getPublicResumeById = async (req, res) => {
     try {
-        const resumeId = req.params.id;
+        const resumeId = req.params.resumeId;
 
         const resume = await Resume.findOne({ public: true, _id: resumeId })
         if (!resume) {
@@ -103,12 +103,29 @@ export const getPublicResumeById = async (req, res) => {
 
 export const updateResume = async (req, res) => {
     try {
-        const userId = req.userId;
+        const userId = req.userID;
         const { resumeId, resumeData, removeBackground } = req.body;
         const image = req.file;
 
+        if (!resumeId || !resumeData) {
+            return res.status(400).json({ message: "resumeId and resumeData are required" });
+        }
 
-        let resumeDataCopy = JSON.parse(resumeData)
+        let resumeDataCopy;
+
+        if (typeof resumeData === 'string') {
+            resumeDataCopy = JSON.parse(resumeData)
+        }
+        else {
+            resumeDataCopy = structuredClone(resumeData)
+        }
+
+        // Prevent immutable/internal fields from being updated.
+        delete resumeDataCopy._id;
+        delete resumeDataCopy.userId;
+        delete resumeDataCopy.__v;
+        delete resumeDataCopy.createdAt;
+        delete resumeDataCopy.updatedAt;
 
         if (image) {
 
@@ -123,15 +140,22 @@ export const updateResume = async (req, res) => {
                     pre: 'w-300 , h-300, fo-face, z-0.75' + (removeBackground ? ',e-bg_remove' : ' ')
                 }
             });
+            if (!resumeDataCopy.personal_info) {
+                resumeDataCopy.personal_info = {};
+            }
             resumeDataCopy.personal_info.image = response.url;
         }
 
         const resume = await Resume.findOneAndUpdate({ userId, _id: resumeId }, resumeDataCopy, { new: true })
 
+        if (!resume) {
+            return res.status(404).json({ message: "resume not found" });
+        }
+
         return res.status(200).json({ message: "resume updated successfully", resume })
 
     } catch (error) {
-
+        return res.status(400).json({ message: "error updating resume", error: error.message })
     }
 
 }

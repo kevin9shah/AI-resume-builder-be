@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { stringify } from "node:querystring";
 
 const resumeSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -42,7 +41,7 @@ const resumeSchema = new mongoose.Schema({
             institution: { type: String },
             degree: { type: String },
             field: { type: String },
-            graduation_data: { type: Date },
+            graduation_date: { type: Date },
             gpa: { type: String }
         }
     ],

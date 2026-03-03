@@ -1,5 +1,5 @@
-import ai from "../configs/ai";
-import Resume from "../models/Resume";
+import ai from "../configs/ai.js";
+import Resume from "../models/Resume.js";
 
 // controller for enhancing a resume's professional summary
 // POST : /api/ai/enhance-pro-sum
@@ -77,7 +77,50 @@ export const uploadResume = async (req, res) => {
 
         const systemPrompt = "You are a helpful assistant for uploading resumes. You take the user's input and extract key information such as name, contact details, skills, experience, and education. You then format this information in a structured way that can be easily stored in a database. Only return the extracted information in JSON format without any additional text or explanations."
 
-        const userPrompt = `Here is the resume text:\n\n${resumeText}\n\nPlease extract the following information:\n- Name\n- Contact Details (email, phone number)\n- Skills\n- Experience (job titles, companies, durations)\n- Education (degrees, institutions, graduation years)`
+        const userPrompt = `extract data from this resume: ${resumeText}
+        
+        Provide the data in the following JSON format with no additional text before or after:
+        {
+            professional_summary: { type: String, default: "" },
+            skills: [{ type: String }],
+            personal_info: {
+                image: { type: String, default: "" },
+                full_name: { type: String, default: "" },
+                profession: { type: String, default: "" },
+                email: { type: String, default: "" },
+                phone: { type: String, default: "" },
+                location: { type: String, default: "" },
+                linkedin: { type: String, default: "" },
+                website: { type: String, default: "" },
+        
+            },
+            experience: [
+                {
+                    company: { type: String },
+                    position: { type: String },
+                    startDate: { type: Date },
+                    endDate: { type: Date },
+                    description: { type: String, default: "" },
+                    is_current: { type: Boolean, default: false }
+                }
+            ],
+            projects: [
+                {
+                    name: { type: String },
+                    type: { type: String },
+                    description: { type: String, default: "" }
+                }
+            ],
+            education: [
+                {
+                    institution: { type: String },
+                    degree: { type: String },
+                    field: { type: String },
+                    graduation_date: { type: Date },
+                    gpa: { type: String }
+                }  
+    }
+        `
 
         const response = await ai.chat.completions.create({
             model: process.env.GEMINI_MODEL,
@@ -92,8 +135,9 @@ export const uploadResume = async (req, res) => {
             response_format: { type: "json_object" }
         })
 
-        const extractedData = response.choices[0].message.content();
+        const extractedData = response.choices[0].message.content;
         const parsedData = JSON.parse(extractedData);
+
         const newResume = await Resume.create({
             userId, title, ...parsedData
         })
